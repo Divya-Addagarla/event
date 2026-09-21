@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+    <div class="auth-container">
+        <div id="auth-box">
+            <h2 id="form-title">Login</h2>
+            <input type="email" id="email" placeholder="Email">
+            <input type="password" id="password" placeholder="Password">
+            
+            <div id="signup-fields" style="display:none;">
+                <input type="text" id="username" placeholder="Full Name">
+                <input type="text" id="phone" placeholder="Phone Number">
+                <select id="role">
+                    <option value="user">Student</option>
+                    <option value="admin">Admin</option>
+                </select>
+            </div>
+
+            <button id="main-btn">Login</button>
+            <p onclick="toggleAuth()" id="toggle-text">Need an account? Sign Up</p>
+        </div>
+    </div>
+
+    <script type="module">
+        import { auth, db, signInWithEmailAndPassword, createUserWithEmailAndPassword, doc, setDoc, getDoc } from "/js/firebase-config.js";
+
+        window.toggleAuth = () => {
+            const fields = document.getElementById('signup-fields');
+            const title = document.getElementById('form-title');
+            const btn = document.getElementById('main-btn');
+            const isLogin = fields.style.display === 'none';
+            fields.style.display = isLogin ? 'block' : 'none';
+            title.innerText = isLogin ? 'Create Account' : 'Login';
+            btn.innerText = isLogin ? 'Sign Up' : 'Login';
+        };
+
+        document.getElementById('main-btn').onclick = async () => {
+            const email = document.getElementById('email').value;
+            const pass = document.getElementById('password').value;
+            const isSignup = document.getElementById('signup-fields').style.display !== 'none';
+
+            try {
+                if (isSignup) {
+                    const res = await createUserWithEmailAndPassword(auth, email, pass);
+                    await setDoc(doc(db, "users", res.user.uid), {
+                        name: document.getElementById('username').value,
+                        phone: document.getElementById('phone').value,
+                        role: document.getElementById('role').value,
+                        email: email
+                    });
+                    alert("Account Created!");
+                    location.reload();
+                } else {
+                    const res = await signInWithEmailAndPassword(auth, email, pass);
+                    const userSnap = await getDoc(doc(db, "users", res.user.uid));
+                    if(userSnap.data().role === 'admin') window.location.href='/admin';
+                    else window.location.href='/user';
+                }
+            } catch (e) { alert("Invalid Credentials"); }
+        };
+    </script>
+</body>
+</html>

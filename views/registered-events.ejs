@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="/css/style.css">
+    <title>My Registered Events</title>
+</head>
+<body>
+    <div class="sidebar">
+        <h2>Student Portal</h2>
+        <button onclick="location.href='/user'">Upcoming Events</button>
+        <button onclick="location.href='/'">Logout</button>
+    </div>
+
+    <div class="content">
+        <h3>Your Registered Events</h3>
+        <p>Manage your event bookings and cancellations below.</p>
+        <hr>
+        <div id="my-registrations-grid" class="events-container">
+            <p id="status-msg">Loading your events...</p>
+        </div>
+    </div>
+
+    <script type="module">
+        // Import all necessary Firestore functions
+        import { 
+            db, auth, getDocs, collection, query, where, doc, getDoc, deleteDoc, updateDoc, increment 
+        } from "/js/firebase-config.js";
+
+        // 1. Load the User's Registered Events
+        auth.onAuthStateChanged(async (user) => {
+            const container = document.getElementById('my-registrations-grid');
+            
+            if (user) {
+                try {
+                    // Query registrations for the logged-in user's email
+                    const q = query(collection(db, "registrations"), where("userEmail", "==", user.email));
+                    const querySnapshot = await getDocs(q);
+
+                    if (querySnapshot.empty) {
+                        container.innerHTML = "<p>You haven't registered for any events yet.</p>";
+                        return;
+                    }
+
+                    container.innerHTML = ""; // Clear the loading message
+
+                    querySnapshot.forEach(async (registration) => {
+                        const regId = registration.id;
+                        const regData = registration.data();
+                        
+                        // Fetch the actual event details using the eventId stored in registration
+                        const eventRef = doc(db, "events", regData.eventId);
+                        const eventSnap = await getDoc(eventRef);
+
+                        if (eventSnap.exists()) {
+                            const ev = eventSnap.data();
+                            container.innerHTML += `
+                                <div class="event-card" id="card-${regId}">
+                                    <div class="event-info">
+                                        <h4>${ev.name}</h4>
+                                        <p><strong>Date:</strong> ${ev.date}</p>
+                                        <p><strong>Time:</strong> ${ev.time}</p>
+                                        <p><strong>Venue:</strong> ${ev.venue}</p>
+                                    </div>
+                                    <button class="cancel-btn" onclick="cancelReg('${regId}', '${regData.eventId}')">
+                                        Cancel Registration
+                                    </button>
+                                </div>
+                            `;
+                        }
+                    });
+                } catch (error) {
+                    console.error("Error loading events:", error);
+                    container.innerHTML = "<p>Error loading events. Please check your connection.</p>";
+                }
+            } else {
+                // Not logged in? Send back to login page
+                window.location.href = "/";
+            }
+        });
+
+        // 2. Define the Cancel Function and make it Global
+        // This must be attached to 'window' because we are in a module script
+        window.cancelReg = async (regDocId, eventId) => {
+            if (confirm("Are you sure you want to cancel this registration? This will free up a seat for others.")) {
+                try {
+                    // Step A: Delete the registration document from Firestore
+                    await deleteDoc(doc(db, "registrations", regDocId));
+
+                    // Step B: Update the event document to decrease registeredCount by 1
+                    // This automatically increases the "Seats Left" on the dashboard
+                    const eventRef = doc(db, "events", eventId);
+                    await updateDoc(eventRef, {
+                        registeredCount: increment(-1)
+                    });
+
+                    alert("Registration cancelled successfully.");
+                    location.reload(); // Refresh to show updated list
+                } catch (error) {
+                    console.error("Cancellation error:", error);
+                    alert("Could not cancel registration: " + error.message);
+                }
+            }
+        };
+    </script>
+</body>
+</html>

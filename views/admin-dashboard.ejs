@@ -1,0 +1,34 @@
+<link rel="stylesheet" href="/css/style.css">
+<div class="sidebar">
+    <h2>Admin Panel</h2>
+    <button onclick="showPanel('add')">Add Event</button>
+    <button onclick="showPanel('feedback')">Feedbacks</button>
+    <button onclick="location.href='/'">Logout</button>
+</div>
+
+<div class="content">
+    <div id="add-panel">
+        <h3>Upload New Event</h3>
+        <input type="text" id="name" placeholder="Event Name">
+        <input type="date" id="date">
+        <input type="time" id="time">
+        <input type="text" id="venue" placeholder="Venue">
+        <input type="number" id="capacity" placeholder="Capacity">
+        <button id="upload-btn">Post Event</button>
+    </div>
+</div>
+
+<script type="module">
+    import { db, collection, addDoc } from "/js/firebase-config.js";
+    document.getElementById('upload-btn').onclick = async () => {
+        await addDoc(collection(db, "events"), {
+            name: document.getElementById('name').value,
+            date: document.getElementById('date').value,
+            time: document.getElementById('time').value,
+            venue: document.getElementById('venue').value,
+            capacity: parseInt(document.getElementById('capacity').value),
+            registeredCount: 0
+        });
+        alert("Event Uploaded!");
+    }
+</script>

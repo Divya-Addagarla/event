@@ -1,0 +1,71 @@
+<link rel="stylesheet" href="/css/style.css">
+<div class="sidebar">
+    <h2>Student Portal</h2>
+    <button onclick="location.href='/registered-events'">My Registrations</button>
+    <button onclick="location.href='/'">Logout</button>
+</div>
+
+<div class="content">
+    <h3>Upcoming Events</h3>
+    <div id="events-grid"></div>
+</div>
+
+<script type="module">
+    import { db, auth, getDocs, collection, addDoc, updateDoc, doc, increment } from "/js/firebase-config.js";
+
+    const snap = await getDocs(collection(db, "events"));
+    snap.forEach(d => {
+        const ev = d.data();
+        const seats = ev.capacity - ev.registeredCount;
+        document.getElementById('events-grid').innerHTML += `
+            <div class="event-card">
+                <h4>${ev.name}</h4>
+                <p>${ev.date} at ${ev.time}</p>
+                <p>Seats: ${seats}</p>
+                <button onclick="reg('${d.id}', '${seats}')" ${seats <= 0 ? 'disabled' : ''}>Register</button>
+            </div>
+        `;
+    });
+
+    // window.reg = async (id, seats) => {
+    //     const email = prompt("Confirm Email:");
+    //     const pass = prompt("Confirm Password:");
+    //     if(email && pass) {
+    //         await addDoc(collection(db, "registrations"), { eventId: id, userEmail: email });
+    //         await updateDoc(doc(db, "events", id), { registeredCount: increment(1) });
+    //         alert("Registered Successfully!");
+    //         location.reload();
+    //     }
+    // };
+
+
+// Inside the <script type="module"> of user-dashboard.ejs
+window.reg = async (id, seats) => {
+    const email = prompt("Confirm Email to Register:");
+    const pass = prompt("Confirm Password:");
+    
+    if(email && pass) {
+        try {
+            // 1. Add registration record
+            await addDoc(collection(db, "registrations"), { 
+                eventId: id, 
+                userEmail: email 
+            });
+
+            // 2. Update the event count
+            await updateDoc(doc(db, "events", id), { 
+                registeredCount: increment(1) 
+            });
+
+            // 3. Display Thank You message
+            alert("Thank you for your registration!"); 
+            
+            location.reload();
+        } catch (error) {
+            alert("Error during registration: " + error.message);
+        }
+    }
+};
+
+
+</script>
